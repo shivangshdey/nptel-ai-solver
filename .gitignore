@@ -9,3 +9,5 @@ proxy/.env
 *.zip
 proxy/.wrangler/
 proxy/node_modules/
+NOTES.md
+NOTES.md
