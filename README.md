@@ -54,6 +54,8 @@ npx wrangler deploy
 
 Then set `PROXY_URL` in [popup.js](popup.js), the matching host permission in [manifest.json](manifest.json), and `ALLOWED_ORIGINS` in [proxy/wrangler.toml](proxy/wrangler.toml) to `chrome-extension://<your-extension-id>`. The model name is a constant at the top of [proxy/worker.js](proxy/worker.js) (and displayed from `popup.js`).
 
+
+
 ## Known limitations
 
 - Answer quality depends on the model. Small or "flash" models can get questions wrong that a stronger model gets right.
