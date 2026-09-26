@@ -61,4 +61,4 @@ Change it if Google renames or retires the model, or to trade speed for accuracy
 
 ## License
 
-Code: no license file yet, so all rights reserved by default. Add one (for example MIT) if you want others to reuse it. Space Mono is licensed separately under the SIL OFL 1.1 (see [fonts/OFL.txt](fonts/OFL.txt)).
+Code: [MIT](LICENSE). Space Mono is licensed separately under the SIL OFL 1.1 (see [fonts/OFL.txt](fonts/OFL.txt)).
