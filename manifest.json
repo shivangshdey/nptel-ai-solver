@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "NPTEL AI Solver",
+  "version": "1.0.0",
+  "description": "Autofills multiple-choice assignments on NPTEL Swayam using an AI model.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [
+    "*://*.swayam2.nc-auth.info/*",
+    "*://onlinecourses.nptel.ac.in/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "NPTEL AI Solver"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.swayam2.nc-auth.info/*",
+        "*://onlinecourses.nptel.ac.in/*"
+      ],
+      "js": ["content.js"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ]
+}
