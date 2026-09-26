@@ -64,7 +64,9 @@
 
   const BARE_NUMBER_RE = /^\d+[.)]?$/;
 
-  function extractQuiz() {
+  // Radio groups that have readable option text, in page order. Extraction and
+  // filling both use this so answer i always goes to question i.
+  function questionGroups() {
     const radios = getRadios();
     const groups = new Map();
     radios.forEach((radio, idx) => {
@@ -72,58 +74,54 @@
       if (!groups.has(name)) groups.set(name, []);
       groups.get(name).push(radio);
     });
-
-    const questions = [];
+    const withText = [];
     let emptyOptionGroups = 0;
     let sampleHtml = "";
     for (const groupRadios of groups.values()) {
-      const options = groupRadios.map(optionText).filter(Boolean);
-      if (!options.length) {
+      if (groupRadios.map(optionText).some(Boolean)) {
+        withText.push(groupRadios);
+      } else {
         emptyOptionGroups++;
         if (!sampleHtml) sampleHtml = groupRadios[0]?.parentElement?.outerHTML?.slice(0, 800) || "";
-        continue;
       }
+    }
+    return { radios, groupCount: groups.size, withText, emptyOptionGroups, sampleHtml };
+  }
+
+  function extractQuiz() {
+    const { radios, groupCount, withText, emptyOptionGroups, sampleHtml } = questionGroups();
+    const questions = withText.map((groupRadios) => {
+      const options = groupRadios.map(optionText).filter(Boolean);
       const container = questionContainer(groupRadios, radios);
       const lines = (container?.innerText || "").split("\n").map((l) => l.trim()).filter(Boolean);
       const optSet = new Set(options.map(norm));
       const candidates = lines.filter((l) => !optSet.has(norm(l)) && !BARE_NUMBER_RE.test(l));
       const question = candidates.sort((a, b) => b.length - a.length)[0] || lines[0] || "";
-      questions.push({ question, options });
-    }
+      return { question, options };
+    });
 
-    console.log(`${LOG} radios=${radios.length} groups=${groups.size} questions=${questions.length} emptyOptionGroups=${emptyOptionGroups}`);
+    console.log(`${LOG} radios=${radios.length} groups=${groupCount} questions=${questions.length} emptyOptionGroups=${emptyOptionGroups}`);
     if (!questions.length && radios.length) {
       console.log(`${LOG} Found radio buttons but could not read option text. Sample markup around one option:\n`, sampleHtml);
     }
-    return { questions, debug: { radios: radios.length, groups: groups.size, emptyOptionGroups, sampleHtml } };
+    return { questions, debug: { radios: radios.length, groups: groupCount, emptyOptionGroups, sampleHtml } };
   }
 
+  // answers[i] is the exact option text for question i, or null to skip it.
   function fillAnswers(answers) {
-    const wanted = answers.map(norm).filter(Boolean);
-    const groups = new Map();
-    getRadios().forEach((radio, idx) => {
-      const name = radio.name || `__unnamed_${idx}`;
-      if (!groups.has(name)) groups.set(name, []);
-      groups.get(name).push(radio);
-    });
-
+    const { withText } = questionGroups();
     let filled = 0;
-    for (const radios of groups.values()) {
-      let target = radios.find((r) => wanted.includes(norm(optionText(r))));
-      if (!target) {
-        target = radios.find((r) => {
-          const t = norm(optionText(r));
-          return t && wanted.some((w) => w.includes(t) || t.includes(w));
-        });
-      }
-      if (target) {
-        target.click(); // triggers framework handlers (Angular/React etc.)
-        if (!target.checked) target.checked = true;
-        target.dispatchEvent(new Event("input", { bubbles: true }));
-        target.dispatchEvent(new Event("change", { bubbles: true }));
-        filled++;
-      }
-    }
+    withText.forEach((groupRadios, i) => {
+      const wanted = norm(answers[i]);
+      if (!wanted) return;
+      const target = groupRadios.find((r) => norm(optionText(r)) === wanted);
+      if (!target) return;
+      target.click(); // triggers framework handlers (Angular/React etc.)
+      if (!target.checked) target.checked = true;
+      target.dispatchEvent(new Event("input", { bubbles: true }));
+      target.dispatchEvent(new Event("change", { bubbles: true }));
+      filled++;
+    });
     return filled;
   }
 
@@ -134,7 +132,7 @@
       if (msg.action === "extract_quiz") {
         sendResponse(extractQuiz());
       } else if (msg.action === "fill_answers") {
-        sendResponse({ filled: fillAnswers(msg.answers || []) });
+        sendResponse({ filled: fillAnswers(Array.isArray(msg.answers) ? msg.answers : []) });
       } else {
         return false;
       }

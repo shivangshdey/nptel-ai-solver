@@ -1,4 +1,4 @@
-// Change this constant if Google retires/renames the model again.
+// Display only; the model is chosen in proxy/worker.js.
 const MODEL = "gemini-3.8-flash";
 // Cloudflare Worker that holds the API key. Replace with your deployed worker URL.
 const PROXY_URL = "https://proxy.example.workers.dev/solve";
@@ -170,41 +170,13 @@ previewBtn.addEventListener("click", async () => {
   }
 });
 
-function buildPrompt(questions) {
-  return (
-    "You are an expert taking a multiple-choice ecology quiz. " +
-    "For each question below, choose the single correct option.\n\n" +
-    "Return ONLY a raw JSON array of strings. Each string must be the EXACT text of the correct option, " +
-    "copied character for character from the provided options, one per question, in the same order as the questions. " +
-    "Do NOT use markdown, code fences, explanations, or any other text.\n\n" +
-    "Questions:\n" + JSON.stringify(questions, null, 2)
-  );
-}
-
-function parseAnswers(text) {
-  let cleaned = String(text || "").trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/, "");
-  try {
-    const parsed = JSON.parse(cleaned);
-    if (Array.isArray(parsed)) return parsed.map(String);
-  } catch (_) { /* fall through to bracket extraction */ }
-  const start = cleaned.indexOf("[");
-  const end = cleaned.lastIndexOf("]");
-  if (start !== -1 && end > start) {
-    const parsed = JSON.parse(cleaned.slice(start, end + 1));
-    if (Array.isArray(parsed)) return parsed.map(String);
-  }
-  throw new Error("AI did not return a valid JSON array.");
-}
-
 const RETRYABLE_STATUS = new Set([429, 503]);
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function askGemini(prompt, { maxRetries = 3 } = {}) {
+async function askSolver(questions, { maxRetries = 3 } = {}) {
   let lastErr;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     let res;
@@ -212,16 +184,16 @@ async function askGemini(prompt, { maxRetries = 3 } = {}) {
       res = await fetch(PROXY_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ questions })
       });
     } catch (_) {
-      throw new Error("Could not reach the solver server. Is it running?");
+      throw new Error("Could not reach the solver server. Check your internet connection.");
     }
     const data = await res.json().catch(() => ({}));
 
     if (res.ok) {
-      if (!data.text) throw new Error("Empty response from the AI.");
-      return data.text;
+      if (!Array.isArray(data.answers)) throw new Error("Empty response from the AI.");
+      return data.answers;
     }
 
     lastErr = new Error(`API error ${res.status}: ${data?.error?.message || res.statusText}`);
@@ -262,8 +234,7 @@ solveBtn.addEventListener("click", async () => {
     drawCoil(total, 0);
 
     setStatus(`Thinking... (${total} questions)`);
-    const raw = await askGemini(buildPrompt(extracted.questions));
-    const answers = parseAnswers(raw);
+    const answers = await askSolver(extracted.questions);
 
     setStatus("Filling answers...");
     const result = await sendToTab(tab.id, { action: "fill_answers", answers });

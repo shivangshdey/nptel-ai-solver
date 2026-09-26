@@ -37,10 +37,10 @@ This tool is for learning and experimentation. Using it to complete graded assig
 | [content.js](content.js) | Groups radio buttons by `name`, finds each question's container without crossing into neighbouring questions, extracts question and option text, and clicks the matching option for each returned answer. |
 | [popup.html](popup.html) | Popup markup and styles. |
 | [popup.js](popup.js) | Popup logic: talks to the content script, builds the prompt, sends it to the proxy, parses the JSON answer array, and updates the UI. |
-| [proxy/worker.js](proxy/worker.js) | Cloudflare Worker that holds the Gemini keys (`GEMINI_API_KEY`, `GEMINI_API_KEY_2` as secrets), checks the caller's extension ID, rate-limits, and forwards to Gemini. |
+| [proxy/worker.js](proxy/worker.js) | Cloudflare Worker that holds the Gemini keys (`GEMINI_API_KEY`, `GEMINI_API_KEY_2` as secrets). It accepts only question/option lists, builds the prompt itself, and returns only strings that are one of the submitted options, so it can't be used as a general AI endpoint. It also checks the extension ID, rate-limits per IP, and falls back to the second key on quota errors. |
 | [fonts/](fonts/) | Bundled Space Mono (SIL Open Font License). |
 
-The model is asked to return only a JSON array containing the exact text of the correct option for each question, in order. The content script matches those strings back to the radio buttons.
+The model is asked to return a JSON array with the exact text of the correct option for each question, in order. The proxy maps each answer back to one of that question's own options (or `null` if it can't), and the content script selects answer *i* in question *i* only.
 
 ## Deploying the proxy
 
