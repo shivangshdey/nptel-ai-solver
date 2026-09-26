@@ -22,7 +22,6 @@
       --muted: #858a82;
       --soft: #c3c8bc;
       --shadow: #1c1d1b;
-      --dot: rgba(28, 29, 27, 0.35);
     }
     @media (prefers-color-scheme: dark) {
       :root {
@@ -32,7 +31,6 @@
         --muted: #7c8279;
         --soft: #3a3f38;
         --shadow: #000;
-        --dot: rgba(232, 236, 226, 0.3);
       }
     }
 
@@ -46,7 +44,9 @@
       font-family: "Space Mono", ui-monospace, Consolas, monospace;
       font-size: 12px;
       -webkit-font-smoothing: antialiased;
+      scrollbar-width: none;
     }
+    html::-webkit-scrollbar { display: none; }
     body { padding: 12px 14px 16px 12px; }
 
     .window {
@@ -93,14 +93,6 @@
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
-    .key-flag { display: flex; align-items: center; gap: 6px; }
-    .key-flag i {
-      width: 8px; height: 8px;
-      border: 1.5px solid var(--ink);
-      border-radius: 50%;
-    }
-    .key-flag.on i { background: var(--ink); }
-    .key-flag.on { color: var(--ink); }
 
     .hero {
       margin: 6px 0 12px;
@@ -109,35 +101,6 @@
       font-weight: 400;
       letter-spacing: -0.02em;
     }
-
-    /* Key pill */
-    .pill {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      height: 44px;
-      padding: 0 5px 0 14px;
-      border: 1px solid var(--ink);
-      border-radius: 999px;
-    }
-    .pill label {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-    }
-    .pill input {
-      flex: 1;
-      min-width: 0;
-      height: 100%;
-      border: 0;
-      outline: none;
-      background: transparent;
-      color: var(--ink);
-      font: inherit;
-      font-size: 12px;
-    }
-    .pill input::placeholder { color: var(--muted); }
-    .pill:focus-within { box-shadow: 0 0 0 2px var(--ink) inset; }
 
     button {
       font: inherit;
@@ -148,19 +111,6 @@
       outline: 2px solid var(--ink);
       outline-offset: 3px;
     }
-
-    .save {
-      height: 32px;
-      padding: 0 14px;
-      border: 0;
-      border-radius: 999px;
-      background: var(--ink);
-      color: var(--paper);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-    }
-    .save:active { transform: translateY(1px); }
 
     /* Stat cards */
     .cards {
@@ -276,7 +226,9 @@
       background: var(--paper);
       transition: left 0.25s ease, border-color 0.2s ease;
     }
-    .toggle:hover:not(:disabled) .knob { left: 6px; }
+    /* Hover nudges the knob toward the opposite side, never over the label. */
+    .toggle:hover:not(:disabled):not([aria-pressed="true"]) .knob { left: 6px; }
+    .toggle[aria-pressed="true"]:hover:not(:disabled) .knob { left: calc(100% - 30px); }
     .toggle .lbl {
       position: absolute;
       top: 50%;
@@ -285,18 +237,22 @@
     .toggle .off { right: 9px; }
     .toggle .on { left: 11px; display: none; }
 
-    .toggle[aria-busy="true"] {
+    .toggle[aria-busy="true"],
+    .toggle[aria-pressed="true"] {
       background: var(--ink);
       color: var(--paper);
-      cursor: progress;
     }
-    .toggle[aria-busy="true"] .knob {
+    .toggle[aria-busy="true"] { cursor: progress; }
+    .toggle[aria-busy="true"] .knob,
+    .toggle[aria-pressed="true"] .knob {
       left: calc(100% - 27px);
       border-color: var(--paper);
     }
-    .toggle[aria-busy="true"] .off { display: none; }
-    .toggle[aria-busy="true"] .on { display: block; }
-    .toggle:disabled:not([aria-busy="true"]) { opacity: 0.45; cursor: default; }
+    .toggle[aria-busy="true"] .off,
+    .toggle[aria-pressed="true"] .off { display: none; }
+    .toggle[aria-busy="true"] .on,
+    .toggle[aria-pressed="true"] .on { display: block; }
+    .toggle:disabled:not([aria-busy="true"]):not([aria-pressed="true"]) { opacity: 0.45; cursor: default; }
 
     /* Status line */
     #status {
@@ -339,8 +295,6 @@
     /* Extraction preview */
     #preview {
       margin: 10px 0 0;
-      max-height: 170px;
-      overflow-y: auto;
       padding: 10px 12px;
       border: 1px solid var(--ink);
       border-radius: 10px;
@@ -351,17 +305,6 @@
       word-break: break-word;
     }
     #preview[hidden] { display: none; }
-    #preview::-webkit-scrollbar { width: 12px; }
-    #preview::-webkit-scrollbar-track {
-      border-left: 1px solid var(--ink);
-      background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
-      background-size: 4px 4px;
-    }
-    #preview::-webkit-scrollbar-thumb {
-      background: var(--paper);
-      border: 1px solid var(--ink);
-      border-radius: 0;
-    }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -379,15 +322,9 @@
     <div class="content">
       <div class="meta">
         <span id="modelName">model</span>
-        <span class="key-flag" id="keyFlag"><i></i><span id="keyFlagText">No key</span></span>
       </div>
       <div class="hero">Solver</div>
 
-      <div class="pill">
-        <label for="apiKey">KEY</label>
-        <input type="password" id="apiKey" placeholder="paste gemini key" autocomplete="off" spellcheck="false">
-        <button class="save" id="saveBtn">SAVE</button>
-      </div>
 
       <div class="cards">
         <div class="card">
@@ -419,7 +356,7 @@
         <div class="row">
           <span class="name">PREVIEW</span>
           <span class="desc">scan page</span>
-          <button class="toggle" id="previewBtn" aria-busy="false" aria-label="Preview extraction">
+          <button class="toggle" id="previewBtn" aria-busy="false" aria-pressed="false" aria-label="Preview extraction">
             <span class="lbl off">RUN</span><span class="lbl on">ON</span><span class="knob"></span>
           </button>
         </div>

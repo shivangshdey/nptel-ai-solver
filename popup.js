@@ -1,17 +1,13 @@
 // Change this constant if Google retires/renames the model again.
 const MODEL = "gemini-3.8-flash";
-const API_URL = (key) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(key)}`;
+// Cloudflare Worker that holds the API key. Replace with your deployed worker URL.
+const PROXY_URL = "https://proxy.example.workers.dev/solve";
 
-const keyInput = document.getElementById("apiKey");
-const saveBtn = document.getElementById("saveBtn");
 const previewBtn = document.getElementById("previewBtn");
 const solveBtn = document.getElementById("solveBtn");
 const statusEl = document.getElementById("status");
 const previewEl = document.getElementById("preview");
 const clockEl = document.getElementById("clock");
-const keyFlagEl = document.getElementById("keyFlag");
-const keyFlagTextEl = document.getElementById("keyFlagText");
 const qCountEl = document.getElementById("qCount");
 const fillCountEl = document.getElementById("fillCount");
 const coilEl = document.getElementById("coil");
@@ -34,11 +30,6 @@ function setBusy(button, busy) {
   button.setAttribute("aria-busy", String(busy));
   ringEl.classList.toggle("spinning", busy);
   if (busy) setRing(0.25);
-}
-
-function setKeyFlag(hasKey) {
-  keyFlagEl.classList.toggle("on", hasKey);
-  keyFlagTextEl.textContent = hasKey ? "Key saved" : "No key";
 }
 
 function tickClock() {
@@ -111,20 +102,6 @@ function renderStats(total, filled) {
 
 renderStats(0);
 
-chrome.storage.sync.get("apiKey", ({ apiKey }) => {
-  if (apiKey) keyInput.value = apiKey;
-  setKeyFlag(Boolean(apiKey));
-});
-
-saveBtn.addEventListener("click", () => {
-  const apiKey = keyInput.value.trim();
-  if (!apiKey) return setStatus("Enter an API key first.", "error");
-  chrome.storage.sync.set({ apiKey }, () => {
-    setKeyFlag(true);
-    setStatus("API key saved.", "ok");
-  });
-});
-
 function sendToTab(tabId, message) {
   return new Promise((resolve, reject) => {
     chrome.tabs.sendMessage(tabId, message, (response) => {
@@ -147,7 +124,16 @@ function formatQuestionsForPreview(questions) {
     .join("\n\n");
 }
 
+function setPreviewOn(on) {
+  previewBtn.setAttribute("aria-pressed", String(on));
+  previewEl.hidden = !on;
+}
+
 previewBtn.addEventListener("click", async () => {
+  if (previewBtn.getAttribute("aria-pressed") === "true") {
+    setPreviewOn(false);
+    return;
+  }
   setBusy(previewBtn, true);
   solveBtn.disabled = true;
   previewEl.hidden = true;
@@ -172,7 +158,7 @@ previewBtn.addEventListener("click", async () => {
     }
 
     previewEl.textContent = formatQuestionsForPreview(extracted.questions);
-    previewEl.hidden = false;
+    setPreviewOn(true);
     renderStats(extracted.questions.length);
     setStatus(`Extracted ${extracted.questions.length} question(s). Compare against the page below.`, "ok");
   } catch (err) {
@@ -218,23 +204,24 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function askGemini(apiKey, prompt, { maxRetries = 3 } = {}) {
+async function askGemini(prompt, { maxRetries = 3 } = {}) {
   let lastErr;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const res = await fetch(API_URL(apiKey), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0 }
-      })
-    });
+    let res;
+    try {
+      res = await fetch(PROXY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+    } catch (_) {
+      throw new Error("Could not reach the solver server. Is it running?");
+    }
     const data = await res.json().catch(() => ({}));
 
     if (res.ok) {
-      const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("");
-      if (!text) throw new Error("Empty response from the AI.");
-      return text;
+      if (!data.text) throw new Error("Empty response from the AI.");
+      return data.text;
     }
 
     lastErr = new Error(`API error ${res.status}: ${data?.error?.message || res.statusText}`);
@@ -252,10 +239,6 @@ solveBtn.addEventListener("click", async () => {
   previewBtn.disabled = true;
   let total = 0;
   try {
-    const apiKey = keyInput.value.trim();
-    if (!apiKey) throw new Error("Please enter and save your API key.");
-    chrome.storage.sync.set({ apiKey });
-
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) throw new Error("No active tab found.");
 
@@ -279,7 +262,7 @@ solveBtn.addEventListener("click", async () => {
     drawCoil(total, 0);
 
     setStatus(`Thinking... (${total} questions)`);
-    const raw = await askGemini(apiKey, buildPrompt(extracted.questions));
+    const raw = await askGemini(buildPrompt(extracted.questions));
     const answers = parseAnswers(raw);
 
     setStatus("Filling answers...");

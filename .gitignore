@@ -1,3 +1,11 @@
 .DS_Store
 Thumbs.db
 *.log
+user_data/
+logs/
+__pycache__/
+.gemini_key
+proxy/.env
+*.zip
+proxy/.wrangler/
+proxy/node_modules/
