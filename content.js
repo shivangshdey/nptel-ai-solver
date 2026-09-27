@@ -1,6 +1,20 @@
 (() => {
+  // Injected on demand (via chrome.scripting, see popup.js) rather than
+  // declared as a persistent content script, so re-clicking Preview/Solve in
+  // the same tab injects this file again. Guard against registering a second
+  // onMessage listener, which would run every extraction/fill twice.
+  if (window.__nptelAiSolverLoaded) return;
+  window.__nptelAiSolverLoaded = true;
+
   const norm = (s) => String(s || "").replace(/\s+/g, " ").trim().toLowerCase();
   const LOG = "[NPTEL AI Solver]";
+
+  // Second half of the scoping guard (popup.js has the first). activeTab
+  // would technically allow injection into whatever tab is active, so this
+  // frame refuses to read or touch anything that isn't an NPTEL page --
+  // checked against its own location, which never needs a permission.
+  const NPTEL_HOST_RE = /^https:\/\/(onlinecourses\.nptel\.ac\.in|([a-z0-9-]+\.)?swayam2\.nc-auth\.info)(:|\/|$)/i;
+  const onNptelPage = NPTEL_HOST_RE.test(location.href);
 
   function getRadios() {
     return Array.from(document.querySelectorAll('input[type="radio"]'));
@@ -23,6 +37,8 @@
     }
     let el = radio.parentElement;
     for (let i = 0; i < 5 && el; i++, el = el.parentElement) {
+      // Past this point the text would include the other options too.
+      if (el.querySelectorAll('input[type="radio"]').length > 1) break;
       const t = (el.innerText || el.textContent || "").trim();
       if (t) return t;
     }
@@ -126,6 +142,7 @@
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (!onNptelPage) return false;
     // Frames without radios stay silent so the frame that has the quiz can answer.
     if (getRadios().length === 0) return false;
     try {

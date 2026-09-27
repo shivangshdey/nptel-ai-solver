@@ -10,4 +10,6 @@ proxy/.env
 proxy/.wrangler/
 proxy/node_modules/
 NOTES.md
-NOTES.md
+nptel-solver-*/
+nptel_bot.py
+NPTEL_BOT_SETUP.md

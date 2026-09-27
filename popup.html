@@ -93,6 +93,14 @@
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
+    .key-flag { display: flex; align-items: center; gap: 6px; }
+    .key-flag i {
+      width: 8px; height: 8px;
+      border: 1.5px solid var(--ink);
+      border-radius: 50%;
+    }
+    .key-flag.on i { background: var(--ink); }
+    .key-flag.on { color: var(--ink); }
 
     .hero {
       margin: 6px 0 12px;
@@ -101,6 +109,48 @@
       font-weight: 400;
       letter-spacing: -0.02em;
     }
+
+    /* Key pill */
+    .pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 44px;
+      padding: 0 5px 0 14px;
+      border: 1px solid var(--ink);
+      border-radius: 999px;
+    }
+    .pill label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+    .pill input {
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-size: 12px;
+    }
+    .pill input::placeholder { color: var(--muted); }
+    .pill:focus-within { box-shadow: 0 0 0 2px var(--ink) inset; }
+
+    .save {
+      height: 32px;
+      padding: 0 14px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--ink);
+      color: var(--paper);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+    .save:active { transform: translateY(1px); }
 
     button {
       font: inherit;
@@ -322,9 +372,15 @@
     <div class="content">
       <div class="meta">
         <span id="modelName">model</span>
+        <span class="key-flag" id="keyFlag"><i></i><span id="keyFlagText">No key</span></span>
       </div>
       <div class="hero">Solver</div>
 
+      <div class="pill">
+        <label for="apiKey">KEY</label>
+        <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Gemini API key">
+        <button class="save" id="saveBtn">SAVE</button>
+      </div>
 
       <div class="cards">
         <div class="card">

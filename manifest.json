@@ -1,13 +1,9 @@
 {
   "manifest_version": 3,
   "name": "NPTEL AI Solver",
-  "version": "1.0.1",
-  "description": "Autofills multiple-choice assignments on NPTEL Swayam using an AI model.",
-  "host_permissions": [
-    "*://*.swayam2.nc-auth.info/*",
-    "*://onlinecourses.nptel.ac.in/*",
-    "https://proxy.example.workers.dev/*"
-  ],
+  "version": "1.1.0",
+  "description": "Autofills multiple-choice assignments on NPTEL Swayam using your own Gemini API key.",
+  "permissions": ["storage", "activeTab", "scripting"],
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -21,16 +17,5 @@
       "32": "icons/icon32.png"
     },
     "default_title": "NPTEL AI Solver"
-  },
-  "content_scripts": [
-    {
-      "matches": [
-        "*://*.swayam2.nc-auth.info/*",
-        "*://onlinecourses.nptel.ac.in/*"
-      ],
-      "js": ["content.js"],
-      "all_frames": true,
-      "run_at": "document_idle"
-    }
-  ]
+  }
 }
